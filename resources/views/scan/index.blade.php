@@ -1,7 +1,7 @@
 <x-app-layout>
     
-    {{-- LIBRARY SCANNER --}}
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    {{-- LIBRARY SCANNER - Ganti dengan jsQR yang lebih ringan dan reliable --}}
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
     {{-- HEADER PAGE --}}
     <div class="flex flex-col md:flex-row justify-between items-center mb-6">
@@ -46,13 +46,16 @@
                 </div>
                 
                 {{-- WADAH KAMERA --}}
-                <div class="relative bg-black rounded-b-xl overflow-hidden min-h-[300px]">
+                <div class="relative bg-gray-900 rounded-b-xl overflow-hidden" style="min-height: 400px;">
                     
-                    {{-- Element Library Scanner --}}
-                    <div id="reader" class="w-full h-full object-cover"></div>
+                    {{-- VIDEO ELEMENT untuk stream kamera --}}
+                    <video id="video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 0 0 1rem 1rem;"></video>
+                    
+                    {{-- CANVAS untuk decode QR (hidden) --}}
+                    <canvas id="canvas" style="display: none;"></canvas>
                     
                     {{-- Overlay "PAUSED" (Muncul saat Stop) --}}
-                    <div id="paused-overlay" class="hidden absolute inset-0 bg-gray-900 flex flex-col items-center justify-center text-white z-20">
+                    <div id="paused-overlay" class="hidden absolute inset-0 bg-gray-900 flex flex-col items-center justify-center text-white" style="z-index: 100;">
                         <div class="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-4">
                             <i class="fas fa-video-slash text-3xl text-gray-500"></i>
                         </div>
@@ -65,7 +68,7 @@
 
                     {{-- Hiasan Garis Laser (Hanya muncul saat Scanning) --}}
                     @if(!session('success'))
-                    <div id="laser-line" class="absolute inset-0 pointer-events-none flex flex-col justify-center items-center opacity-50">
+                    <div id="laser-line" class="absolute inset-0 pointer-events-none flex flex-col justify-center items-center opacity-50" style="z-index: 10;">
                         <div class="w-full h-0.5 bg-red-500 shadow-[0_0_15px_rgba(255,0,0,0.8)] animate-scan"></div>
                     </div>
                     @endif
@@ -227,8 +230,6 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        /* Hide default buttons from library */
-        #reader__dashboard_section_csr button { display: none; } 
     </style>
 
     {{-- SCRIPT --}}
@@ -248,82 +249,169 @@
             }, 3500);
         @endif
 
-        // --- 3. SCANNER LOGIC (DENGAN TOMBOL STOP/START) ---
+        // --- 3. SCANNER LOGIC (NATIVE IMPLEMENTATION) ---
         @if(!session('success'))
             
-            let html5QrcodeScanner = null;
-            let isScanning = false;
+            let video = document.getElementById('video');
+            let canvas = document.getElementById('canvas');
+            let canvasContext = canvas.getContext('2d');
+            let scanning = false;
+            let stream = null;
 
             // Fungsi untuk Memulai Scanner
-            function startScanner() {
-                // UI Updates
-                document.getElementById('btn-start').classList.add('hidden');
-                document.getElementById('btn-stop').classList.remove('hidden');
-                document.getElementById('paused-overlay').classList.add('hidden');
-                document.getElementById('camera-status-text').textContent = "Kamera Aktif";
-                document.getElementById('camera-status-text').classList.remove('text-red-400');
-                if(document.getElementById('laser-line')) document.getElementById('laser-line').classList.remove('hidden');
+            async function startScanner() {
+                try {
+                    console.log("Starting camera...");
+                    
+                    // UI Updates
+                    document.getElementById('btn-start').classList.add('hidden');
+                    document.getElementById('btn-stop').classList.remove('hidden');
+                    document.getElementById('paused-overlay').classList.add('hidden');
+                    document.getElementById('camera-status-text').textContent = "Kamera Aktif";
+                    document.getElementById('camera-status-text').classList.remove('text-red-400');
+                    if(document.getElementById('laser-line')) document.getElementById('laser-line').classList.remove('hidden');
 
-                // Init Library
-                html5QrcodeScanner = new Html5QrcodeScanner(
-                    "reader", 
-                    { 
-                        fps: 10, 
-                        qrbox: {width: 280, height: 280},
-                        aspectRatio: 1.0,
-                        showTorchButtonIfSupported: true
-                    },
-                    false
-                );
-                
-                isScanning = true;
-                html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+                    // Cek browser support
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        throw new Error("Browser tidak mendukung akses kamera");
+                    }
+
+                    // Request kamera dengan constraints yang tepat
+                    const constraints = {
+                        video: { 
+                            facingMode: { ideal: "environment" },
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    };
+
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    console.log("Camera stream obtained:", stream);
+                    
+                    // Attach stream ke video element
+                    video.srcObject = stream;
+                    video.setAttribute('playsinline', true);
+                    video.play();
+                    
+                    console.log("Video element playing");
+                    
+                    scanning = true;
+                    
+                    // Tunggu video ready lalu mulai scan
+                    video.addEventListener('loadedmetadata', () => {
+                        console.log("Video metadata loaded, starting scan loop");
+                        requestAnimationFrame(tick);
+                    });
+                    
+                } catch (error) {
+                    console.error("Error accessing camera:", error);
+                    let errorMsg = "Gagal mengakses kamera: ";
+                    
+                    if (error.name === 'NotAllowedError') {
+                        errorMsg += "Izin kamera ditolak. Silakan izinkan akses kamera di browser.";
+                    } else if (error.name === 'NotFoundError') {
+                        errorMsg += "Kamera tidak ditemukan.";
+                    } else if (error.name === 'NotReadableError') {
+                        errorMsg += "Kamera sedang digunakan aplikasi lain.";
+                    } else {
+                        errorMsg += error.message;
+                    }
+                    
+                    alert(errorMsg);
+                    
+                    // Rollback UI
+                    document.getElementById('btn-start').classList.remove('hidden');
+                    document.getElementById('btn-stop').classList.add('hidden');
+                }
             }
 
             // Fungsi untuk Menghentikan Scanner
             function stopScanner() {
-                if (html5QrcodeScanner) {
-                    html5QrcodeScanner.clear().then(_ => {
-                        // UI Updates setelah berhasil stop
-                        isScanning = false;
-                        document.getElementById('btn-start').classList.remove('hidden');
-                        document.getElementById('btn-stop').classList.add('hidden');
-                        document.getElementById('paused-overlay').classList.remove('hidden');
-                        document.getElementById('camera-status-text').textContent = "Kamera Nonaktif";
-                        document.getElementById('camera-status-text').classList.add('text-red-400');
-                        if(document.getElementById('laser-line')) document.getElementById('laser-line').classList.add('hidden');
-                    }).catch(error => {
-                        console.error("Failed to clear html5QrcodeScanner. ", error);
+                console.log("Stopping camera...");
+                scanning = false;
+                
+                if (stream) {
+                    stream.getTracks().forEach(track => {
+                        track.stop();
+                        console.log("Track stopped:", track);
                     });
+                    stream = null;
                 }
+                
+                video.srcObject = null;
+                
+                // UI Updates
+                document.getElementById('btn-start').classList.remove('hidden');
+                document.getElementById('btn-stop').classList.add('hidden');
+                document.getElementById('paused-overlay').classList.remove('hidden');
+                document.getElementById('camera-status-text').textContent = "Kamera Nonaktif";
+                document.getElementById('camera-status-text').classList.add('text-red-400');
+                if(document.getElementById('laser-line')) document.getElementById('laser-line').classList.add('hidden');
             }
 
-            function onScanSuccess(decodedText, decodedResult) {
-                if (isScanning) {
-                    // Mencegah double scan
-                    isScanning = false; 
+            // Loop untuk scan QR code
+            function tick() {
+                if (!scanning) return;
+                
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    // Set ukuran canvas sesuai video
+                    canvas.height = video.videoHeight;
+                    canvas.width = video.videoWidth;
                     
-                    // Sound Effect
-                    let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-                    audio.play().catch(e => console.log('Audio play failed'));
-
-                    // Kirim Data
-                    document.getElementById('nisn-input').value = decodedText;
-                    document.getElementById('form-scan').submit();
+                    // Draw frame dari video ke canvas
+                    canvasContext.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
-                    // Stop kamera segera agar tidak berat
-                    html5QrcodeScanner.clear();
+                    // Get image data untuk di-scan
+                    const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    // Scan QR code menggunakan jsQR
+                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: "dontInvert",
+                    });
+                    
+                    if (code) {
+                        console.log("QR Code detected:", code.data);
+                        handleQRCode(code.data);
+                        return; // Stop loop setelah berhasil scan
+                    }
                 }
+                
+                // Continue scanning
+                requestAnimationFrame(tick);
             }
 
-            function onScanFailure(error) {
-                // Biarkan kosong
+            // Handle QR code yang terdeteksi
+            function handleQRCode(qrData) {
+                scanning = false;
+                
+                console.log("Processing QR data:", qrData);
+                
+                // Sound effect
+                let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                audio.play().catch(e => console.log('Audio play failed:', e));
+                
+                // Submit form
+                document.getElementById('nisn-input').value = qrData;
+                document.getElementById('form-scan').submit();
+                
+                // Stop camera
+                stopScanner();
             }
 
-            // Jalankan Scanner Otomatis saat halaman dibuka
-            // Bungkus dalam try-catch atau DOMContentLoaded
+            // Auto start saat page load
             document.addEventListener("DOMContentLoaded", function() {
-                startScanner();
+                console.log("DOM loaded, starting scanner in 500ms...");
+                setTimeout(() => {
+                    startScanner();
+                }, 500);
+            });
+
+            // Cleanup saat page close
+            window.addEventListener('beforeunload', function() {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
             });
 
         @endif

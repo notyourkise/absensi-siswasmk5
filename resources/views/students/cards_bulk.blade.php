@@ -144,10 +144,16 @@
                     {{-- 4. Foto Profil --}}
                     <div class="photo-container">
                         <div class="photo-frame">
-                            @if($student->foto && file_exists(public_path('storage/students/'.$student->foto)))
+                            @if(isset($student->foto_base64))
+                                {{-- Gunakan foto yang sudah di-resize dan di-optimize --}}
+                                <img src="{{ $student->foto_base64 }}" class="student-photo">
+                            @elseif($student->foto && file_exists(public_path('storage/students/'.$student->foto)))
                                 <img src="{{ public_path('storage/students/'.$student->foto) }}" class="student-photo">
                             @else
-                                <img src="https://ui-avatars.com/api/?name={{ urlencode($student->nama) }}&background=006400&color=fff" class="student-photo">
+                                {{-- Fallback ke avatar placeholder (base64 agar tidak perlu load eksternal) --}}
+                                <div style="width:100%;height:100%;background:#006400;display:flex;align-items:center;justify-content:center;color:white;font-size:18pt;font-weight:bold;border-radius:50%;">
+                                    {{ strtoupper(substr($student->nama, 0, 1)) }}
+                                </div>
                             @endif
                         </div>
                     </div>

@@ -144,9 +144,46 @@ class StudentController extends Controller
     public function printCard($id)
     {
         $student = Student::findOrFail($id);
+        
+        // Optimasi foto untuk single card juga
+        if ($student->foto) {
+            $fotoPath = public_path('storage/students/' . $student->foto);
+            if (file_exists($fotoPath)) {
+                try {
+                    $imageData = file_get_contents($fotoPath);
+                    $image = imagecreatefromstring($imageData);
+                    
+                    if ($image !== false) {
+                        $width = imagesx($image);
+                        $height = imagesy($image);
+                        
+                        if ($width > 200 || $height > 200) {
+                            $newWidth = 200;
+                            $newHeight = 200;
+                            $resized = imagecreatetruecolor($newWidth, $newHeight);
+                            imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                            
+                            ob_start();
+                            imagejpeg($resized, null, 75);
+                            $resizedData = ob_get_clean();
+                            $student->foto_base64 = 'data:image/jpeg;base64,' . base64_encode($resizedData);
+                            
+                            imagedestroy($resized);
+                        } else {
+                            $student->foto_base64 = 'data:image/jpeg;base64,' . base64_encode($imageData);
+                        }
+                        
+                        imagedestroy($image);
+                    }
+                } catch (\Exception $e) {
+                    $student->foto_base64 = null;
+                }
+            }
+        }
+        
         $pdf = Pdf::loadView('students.card', compact('student'));
         $pdf->setPaper('a4', 'portrait');
-        $pdf->setOption(['dpi' => 150, 'defaultFont' => 'sans-serif']);
+        $pdf->setOption(['dpi' => 96, 'defaultFont' => 'sans-serif']);
 
         return $pdf->stream('Kartu_Pelajar_' . $student->nisn . '.pdf');
     }
@@ -226,6 +263,10 @@ class StudentController extends Controller
     
     public function printAllCards(Request $request)
     {
+        // Optimasi performa server
+        ini_set('max_execution_time', 600); 
+        ini_set('memory_limit', '1024M');   
+        
         // Jika tidak ada kelas yang dipilih, redirect kembali
         if (!$request->has('kelas')) {
             return redirect()->back()->with('error', 'Silakan pilih kelas terlebih dahulu.');
@@ -240,12 +281,60 @@ class StudentController extends Controller
             return redirect()->back()->with('error', 'Tidak ada siswa di kelas ini.');
         }
 
+        // OPTIMASI: Resize foto untuk mengurangi beban memory
+        foreach ($students as $student) {
+            if ($student->foto) {
+                $fotoPath = public_path('storage/students/' . $student->foto);
+                if (file_exists($fotoPath)) {
+                    // Baca dan resize foto menjadi max 200x200px (cukup untuk kartu)
+                    try {
+                        $imageData = file_get_contents($fotoPath);
+                        $image = imagecreatefromstring($imageData);
+                        
+                        if ($image !== false) {
+                            $width = imagesx($image);
+                            $height = imagesy($image);
+                            
+                            // Resize hanya jika foto lebih besar dari 200px
+                            if ($width > 200 || $height > 200) {
+                                $newWidth = 200;
+                                $newHeight = 200;
+                                $resized = imagecreatetruecolor($newWidth, $newHeight);
+                                imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                                
+                                // Convert ke base64 untuk embed langsung di HTML
+                                ob_start();
+                                imagejpeg($resized, null, 75); // Quality 75% untuk balance size & quality
+                                $resizedData = ob_get_clean();
+                                $student->foto_base64 = 'data:image/jpeg;base64,' . base64_encode($resizedData);
+                                
+                                imagedestroy($resized);
+                            } else {
+                                // Foto sudah kecil, langsung convert ke base64
+                                $student->foto_base64 = 'data:image/jpeg;base64,' . base64_encode($imageData);
+                            }
+                            
+                            imagedestroy($image);
+                        }
+                    } catch (\Exception $e) {
+                        // Jika gagal, gunakan foto asli
+                        $student->foto_base64 = null;
+                    }
+                }
+            }
+        }
+
         // Gunakan view baru 'students.cards_bulk'
         $pdf = Pdf::loadView('students.cards_bulk', compact('students', 'kelas'));
         
-        // Kertas A4 Portrait
+        // Kertas A4 Portrait dengan DPI lebih rendah untuk performa
         $pdf->setPaper('a4', 'portrait');
-        $pdf->setOption(['dpi' => 150, 'defaultFont' => 'sans-serif']);
+        $pdf->setOption([
+            'dpi' => 96,  // Turunkan dari 150 ke 96 untuk performa lebih cepat
+            'defaultFont' => 'sans-serif',
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,  // Disable remote loading untuk keamanan & performa
+        ]);
 
         return $pdf->stream('Kartu_Pelajar_Kelas_' . $kelas . '.pdf');
     }
