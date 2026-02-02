@@ -66,7 +66,15 @@
                      x-transition:enter-start="opacity-0 transform -translate-x-2"
                      x-transition:enter-end="opacity-100 transform translate-x-0"
                      class="ml-3">
-                    <span class="block text-lg font-bold tracking-wider text-[#FCA311]">ADMIN</span>
+                    <span class="block text-lg font-bold tracking-wider text-[#FCA311]">
+                        @if(Auth::user()->role == 'admin')
+                            ADMINISTRATOR
+                        @elseif(Auth::user()->role == 'petugas')
+                            PETUGAS PIKET
+                        @else
+                            WALI KELAS
+                        @endif
+                    </span>
                     <span class="block text-[10px] text-gray-400">SMKN 5 Samarinda</span>
                 </div>
 
@@ -84,6 +92,7 @@
                     $inactiveClass = "text-gray-300 hover:bg-white/10 hover:text-[#FCA311]";
                 @endphp
 
+                {{-- 1. DASHBOARD (SEMUA ROLE) --}}
                 <a href="{{ route('dashboard') }}" 
                    class="{{ $baseClass }} {{ request()->routeIs('dashboard') ? $activeClass : $inactiveClass }}"
                    :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
@@ -96,54 +105,129 @@
                     </div>
                 </a>
 
-                <a href="{{ route('report.daily') }}" 
-                   class="{{ $baseClass }} {{ request()->routeIs('report.daily') ? $activeClass : $inactiveClass }}"
-                   :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
-                    <i class="fas fa-calendar-day w-6 text-center text-lg"></i>
-                    
-                    <span x-show="!sidebarCollapsed" class="ml-3 truncate">Laporan Harian</span>
+                {{-- 2. SCAN QR (ADMIN & PETUGAS) --}}
+                @if(Auth::user()->role == 'admin' || Auth::user()->role == 'petugas')
+                    <a href="{{ route('scan.index') }}" 
+                       class="{{ $baseClass }} {{ request()->routeIs('scan.*') ? $activeClass : $inactiveClass }}"
+                       :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
+                        <i class="fas fa-qrcode w-6 text-center text-lg"></i>
+                        
+                        <span x-show="!sidebarCollapsed" class="ml-3 truncate">Scan Absen</span>
 
-                    <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
-                        Laporan Harian
+                        <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
+                            Scan Absen
+                        </div>
+                    </a>
+                @endif
+
+                {{-- 3. MENU ADMIN (KHUSUS ADMIN) --}}
+                @if(Auth::user()->role == 'admin')
+                    <div x-show="!sidebarCollapsed" class="mt-6 mb-2 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        Administrator
                     </div>
-                </a>
 
-                <a href="{{ route('students.index') }}" 
-                   class="{{ $baseClass }} {{ request()->routeIs('students.*') ? $activeClass : $inactiveClass }}"
-                   :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
-                    <i class="fas fa-users w-6 text-center text-lg"></i>
-                    
-                    <span x-show="!sidebarCollapsed" class="ml-3 truncate">Data Siswa</span>
+                    <a href="{{ route('students.index') }}" 
+                       class="{{ $baseClass }} {{ request()->routeIs('students.*') ? $activeClass : $inactiveClass }}"
+                       :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
+                        <i class="fas fa-users w-6 text-center text-lg"></i>
+                        
+                        <span x-show="!sidebarCollapsed" class="ml-3 truncate">Data Siswa</span>
 
-                    <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
-                        Data Siswa
-                    </div>
-                </a>
-
-                <a href="{{ route('scan.index') }}" 
-                   class="{{ $baseClass }} {{ request()->routeIs('scan.*') ? $activeClass : $inactiveClass }}"
-                   :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
-                    <i class="fas fa-qrcode w-6 text-center text-lg"></i>
-                    
-                    <span x-show="!sidebarCollapsed" class="ml-3 truncate">Scan Absen</span>
-
-                    <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
-                        Scan Absen
-                    </div>
-                </a>
-
-                 <a href="{{ route('report.index') }}" 
-                    class="{{ $baseClass }} {{ request()->routeIs('report.index') ? $activeClass : $inactiveClass }}"
+                        <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
+                            Data Siswa
+                        </div>
+                    </a>
+                    {{-- MENU BARU (MANAJEMEN USER) --}}
+                    <a href="{{ route('users.index') }}" 
+                    class="{{ $baseClass }} {{ request()->routeIs('users.*') ? $activeClass : $inactiveClass }}"
                     :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
-                     <i class="fas fa-file-alt w-6 text-center text-lg"></i>
-                     
-                     <span x-show="!sidebarCollapsed" class="ml-3 truncate">Laporan Bulanan</span>
- 
-                     <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
-                         Laporan Bulanan
-                     </div>
-                 </a>
+                        <i class="fas fa-users-cog w-6 text-center text-lg"></i>
+                        
+                        <span x-show="!sidebarCollapsed" class="ml-3 truncate">Manajemen User</span>
 
+                        <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
+                            Manajemen User
+                        </div>
+                    </a>
+                @endif
+
+                {{-- 4. MENU LAPORAN (ADMIN & WALI KELAS) --}}
+                @if(Auth::user()->role == 'admin' || Auth::user()->role == 'wali_kelas')
+                    <div x-show="!sidebarCollapsed" class="mt-6 mb-2 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        Laporan & Input
+                    </div>
+
+                    {{-- Input Manual --}}
+                    <a href="{{ route('manual.create') }}" 
+                        class="{{ $baseClass }} {{ request()->routeIs('manual.*') ? $activeClass : $inactiveClass }}"
+                        :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
+                         <i class="fas fa-pen-to-square w-6 text-center text-lg"></i>
+                         
+                         <span x-show="!sidebarCollapsed" class="ml-3 truncate">Input Manual</span>
+ 
+                         <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
+                             Input Manual
+                         </div>
+                     </a>
+
+                    {{-- Laporan Harian --}}
+                    <a href="{{ route('report.daily') }}" 
+                       class="{{ $baseClass }} {{ request()->routeIs('report.daily') ? $activeClass : $inactiveClass }}"
+                       :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
+                        <i class="fas fa-calendar-day w-6 text-center text-lg"></i>
+                        
+                        <span x-show="!sidebarCollapsed" class="ml-3 truncate">Laporan Harian</span>
+
+                        <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
+                            Laporan Harian
+                        </div>
+                    </a>
+
+                    {{-- Laporan Bulanan --}}
+                    <a href="{{ route('report.index') }}" 
+                       class="{{ $baseClass }} {{ request()->routeIs('report.index') ? $activeClass : $inactiveClass }}"
+                       :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
+                        <i class="fas fa-file-invoice w-6 text-center text-lg"></i>
+                        
+                        <span x-show="!sidebarCollapsed" class="ml-3 truncate">Rekap Bulanan</span>
+
+                        <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
+                            Rekap Bulanan
+                        </div>
+                    </a>
+                @endif
+            {{-- 5. MENU PROFIL (SEMUA USER) --}}
+                {{-- Letakkan ini di bagian paling bawah nav, sebelum </nav> --}}
+                
+                <div x-show="!sidebarCollapsed" class="mt-6 mb-2 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                    Pengaturan
+                </div>
+
+                <a href="{{ route('profile.edit') }}" 
+                   class="{{ $baseClass }} {{ request()->routeIs('profile.*') ? $activeClass : $inactiveClass }}"
+                   :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
+                    <i class="fas fa-user-gear w-6 text-center text-lg"></i>
+                    
+                    <span x-show="!sidebarCollapsed" class="ml-3 truncate">Profil Saya</span>
+
+                    <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
+                        Profil Saya
+                    </div>
+                </a>
+                {{-- [BARU] MENU BACKUP DATABASE (HANYA ADMIN) --}}
+                @if(Auth::user()->role == 'admin')
+                    <a href="{{ route('backup.download') }}" 
+                       class="{{ $baseClass }} text-gray-300 hover:bg-red-500 hover:text-white"
+                       :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
+                        <i class="fas fa-database w-6 text-center text-lg"></i>
+                        
+                        <span x-show="!sidebarCollapsed" class="ml-3 truncate">Backup Database</span>
+
+                        <div x-show="sidebarCollapsed" class="absolute left-14 bg-red-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none">
+                            Backup SQL
+                        </div>
+                    </a>
+                @endif
             </nav>
 
             <div class="absolute bottom-0 w-full p-4 border-t border-white/10 bg-[#0f1a30]">
