@@ -1,134 +1,113 @@
 <x-app-layout>
-    
-    {{-- HEADER PAGE --}}
-    <div class="flex flex-col md:flex-row justify-between items-center mb-6">
-        <div>
-            <h2 class="font-extrabold text-2xl text-[#14213D] leading-tight flex items-center gap-2">
+    {{-- 
+        WRAPPER UTAMA: 
+        h-[calc(100vh-65px)]: Mengatur tinggi full layar dikurangi tinggi navbar (sesuaikan angka 65px jika navbar anda lebih tinggi)
+        overflow-hidden: Mematikan scroll bar browser
+        flex flex-col: Agar header ada di atas dan ilustrasi ada di bawah (auto fill)
+    --}}
+    <div class="h-[calc(100vh-80px)] overflow-hidden flex flex-col p-6 md:p-8">
+
+        {{-- 1. HEADER HALAMAN (Minimalis) --}}
+        <div class="mb-10 flex-none">
+            <h2 class="font-extrabold text-3xl text-[#14213D] leading-tight flex items-center gap-3">
                 <i class="fas fa-file-invoice text-[#FCA311]"></i> {{ __('Laporan Rekapitulasi') }}
             </h2>
-            <p class="text-sm text-gray-500 mt-1">Unduh jurnal kehadiran kelas bulanan (PDF)</p>
-        </div>
-    </div>
-
-    <div class="py-6">
-        <div class="max-w-2xl mx-auto">
+            <p class="text-sm text-gray-500 mt-2 ml-11 max-w-xl">
+                Silakan pilih filter di bawah ini untuk mengunduh rekapitulasi kehadiran siswa dalam format PDF.
+            </p>
             
-            {{-- ALERT ERROR --}}
+            {{-- Alert Error (Jika ada) --}}
             @if(session('error'))
-                <div x-data="{ show: true }" x-show="show" 
-                     class="mb-6 bg-red-100 border-l-4 border-red-500 text-red-800 p-4 rounded-r shadow-sm flex items-center justify-between">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle mr-3 text-lg"></i>
-                        <span class="font-bold">{{ session('error') }}</span>
-                    </div>
-                    <button @click="show = false"><i class="fas fa-times"></i></button>
+                <div x-data="{ show: true }" x-show="show" class="mt-4 ml-11 bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded shadow-sm w-fit flex items-center gap-3 text-sm">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>{{ session('error') }}</span>
+                    <button @click="show = false" class="ml-4 hover:text-red-900"><i class="fas fa-times"></i></button>
                 </div>
             @endif
+        </div>
 
-            <div class="bg-white overflow-hidden shadow-2xl rounded-3xl border border-gray-100 relative">
+        {{-- 2. FORM AREA (Horizontal / Memanjang) --}}
+        <div class="w-full flex-none">
+            <form action="{{ route('report.download') }}" method="POST" target="_blank">
+                @csrf
                 
-                {{-- Hiasan Background Atas --}}
-                <div class="absolute top-0 left-0 right-0 h-2 bg-[#14213D]"></div>
-                <div class="absolute top-0 right-0 -mt-10 -mr-10 w-32 h-32 bg-[#FCA311] rounded-full opacity-10 blur-2xl"></div>
-
-                <div class="p-8 md:p-10">
+                {{-- Grid System: 4 Kolom Sejajar (Kelas | Bulan | Tahun | Tombol) --}}
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                     
-                    {{-- Judul Form --}}
-                    <div class="text-center mb-10">
-                        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#14213D] mb-5 shadow-lg shadow-indigo-900/20">
-                            <i class="fas fa-print text-3xl text-[#FCA311]"></i>
+                    {{-- Input 1: PILIH KELAS --}}
+                    <div class="w-full">
+                        <label for="kelas" class="block text-xs font-bold text-[#14213D] uppercase mb-2 tracking-wider pl-1">
+                            Pilih Kelas
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                <i class="fas fa-chalkboard-teacher"></i>
+                            </div>
+                            <select name="kelas" id="kelas" class="w-full pl-10 pr-8 py-3 bg-white border border-gray-300 text-[#14213D] font-bold rounded-xl focus:ring-2 focus:ring-[#FCA311] focus:border-[#FCA311] transition-all shadow-sm cursor-pointer" required>
+                                <option value="" disabled selected>-- Pilih Kelas --</option>
+                                @foreach($classes as $kls)
+                                    <option value="{{ $kls }}">{{ $kls }}</option>
+                                @endforeach
+                            </select>
                         </div>
-                        <h3 class="text-2xl font-black text-[#14213D] tracking-tight">Cetak Jurnal Absensi</h3>
-                        <p class="text-sm text-gray-500 mt-2 max-w-sm mx-auto">
-                            Silakan pilih filter di bawah ini untuk mengunduh rekapitulasi kehadiran siswa dalam format PDF.
-                        </p>
                     </div>
 
-                    {{-- Form Utama --}}
-                    <form action="{{ route('report.download') }}" method="POST" target="_blank" class="space-y-6">
-                        @csrf
-                        
-                        {{-- 1. PILIH KELAS --}}
-                        <div>
-                            <label for="kelas" class="block text-xs font-bold text-[#14213D] uppercase mb-2 tracking-wider">
-                                Pilih Kelas
-                            </label>
-                            <div class="relative group">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#FCA311] transition">
-                                    <i class="fas fa-chalkboard-teacher"></i>
-                                </div>
-                                <select name="kelas" id="kelas" class="block w-full pl-11 pr-10 py-3.5 bg-[#E5E5E5] border-transparent text-[#14213D] font-bold rounded-xl focus:ring-2 focus:ring-[#FCA311] focus:bg-white focus:border-transparent transition-all shadow-sm cursor-pointer" required>
-                                    <option value="" disabled selected>-- Pilih Kelas --</option>
-                                    @foreach($classes as $kls)
-                                        <option value="{{ $kls }}">{{ $kls }}</option>
-                                    @endforeach
-                                </select>
-                                <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-400">
-                                    <i class="fas fa-chevron-down text-xs"></i>
-                                </div>
+                    {{-- Input 2: PILIH BULAN --}}
+                    <div class="w-full">
+                        <label for="bulan" class="block text-xs font-bold text-[#14213D] uppercase mb-2 tracking-wider pl-1">
+                            Bulan
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                <i class="fas fa-calendar-alt"></i>
                             </div>
+                            <select name="bulan" id="bulan" class="w-full pl-10 pr-8 py-3 bg-white border border-gray-300 text-[#14213D] font-bold rounded-xl focus:ring-2 focus:ring-[#FCA311] focus:border-[#FCA311] transition-all shadow-sm cursor-pointer" required>
+                                @foreach(range(1, 12) as $m)
+                                    <option value="{{ $m }}" {{ date('n') == $m ? 'selected' : '' }}>
+                                        {{ \Carbon\Carbon::create()->month($m)->translatedFormat('F') }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
+                    </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {{-- 2. PILIH BULAN --}}
-                            <div>
-                                <label for="bulan" class="block text-xs font-bold text-[#14213D] uppercase mb-2 tracking-wider">
-                                    Bulan
-                                </label>
-                                <div class="relative group">
-                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#FCA311] transition">
-                                        <i class="fas fa-calendar-alt"></i>
-                                    </div>
-                                    <select name="bulan" id="bulan" class="block w-full pl-11 py-3.5 bg-[#E5E5E5] border-transparent text-[#14213D] font-bold rounded-xl focus:ring-2 focus:ring-[#FCA311] focus:bg-white focus:border-transparent transition-all shadow-sm cursor-pointer" required>
-                                        @foreach(range(1, 12) as $m)
-                                            <option value="{{ $m }}" {{ date('n') == $m ? 'selected' : '' }}>
-                                                {{ \Carbon\Carbon::create()->month($m)->translatedFormat('F') }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                    {{-- Input 3: PILIH TAHUN --}}
+                    <div class="w-full">
+                        <label for="tahun" class="block text-xs font-bold text-[#14213D] uppercase mb-2 tracking-wider pl-1">
+                            Tahun
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                <i class="fas fa-history"></i>
                             </div>
-
-                            {{-- 3. PILIH TAHUN --}}
-                            <div>
-                                <label for="tahun" class="block text-xs font-bold text-[#14213D] uppercase mb-2 tracking-wider">
-                                    Tahun
-                                </label>
-                                <div class="relative group">
-                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#FCA311] transition">
-                                        <i class="fas fa-history"></i>
-                                    </div>
-                                    <select name="tahun" id="tahun" class="block w-full pl-11 py-3.5 bg-[#E5E5E5] border-transparent text-[#14213D] font-bold rounded-xl focus:ring-2 focus:ring-[#FCA311] focus:bg-white focus:border-transparent transition-all shadow-sm cursor-pointer" required>
-                                        @for($y = date('Y'); $y >= 2024; $y--)
-                                            <option value="{{ $y }}">{{ $y }}</option>
-                                        @endfor
-                                    </select>
-                                </div>
-                            </div>
+                            <select name="tahun" id="tahun" class="w-full pl-10 pr-8 py-3 bg-white border border-gray-300 text-[#14213D] font-bold rounded-xl focus:ring-2 focus:ring-[#FCA311] focus:border-[#FCA311] transition-all shadow-sm cursor-pointer" required>
+                                @for($y = date('Y'); $y >= 2024; $y--)
+                                    <option value="{{ $y }}">{{ $y }}</option>
+                                @endfor
+                            </select>
                         </div>
+                    </div>
 
-                        {{-- TOMBOL DOWNLOAD --}}
-                        <div class="pt-6">
-                            <button type="submit" class="w-full flex justify-center items-center py-4 px-6 border border-transparent rounded-xl shadow-lg text-sm font-black text-white bg-[#14213D] hover:bg-[#0f1a30] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#14213D] transition-all transform hover:-translate-y-1 active:scale-95 group">
-                                <span class="bg-white/20 p-1.5 rounded-md mr-3 group-hover:bg-[#FCA311] group-hover:text-[#14213D] transition-colors">
-                                    <i class="fas fa-file-pdf text-lg"></i>
-                                </span>
-                                DOWNLOAD REKAPITULASI (PDF)
-                            </button>
-                        </div>
-                    </form>
+                    {{-- TOMBOL EKSEKUSI --}}
+                    <div class="w-full">
+                        <button type="submit" class="w-full flex justify-center items-center py-3 px-6 bg-[#14213D] hover:bg-[#0f1a30] text-white font-bold rounded-xl shadow-lg transform hover:-translate-y-1 transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-[#14213D]">
+                            <i class="fas fa-file-pdf mr-2 text-[#FCA311]"></i> CETAK PDF
+                        </button>
+                    </div>
 
                 </div>
-                
-                {{-- Footer Info --}}
-                <div class="bg-[#F9FAFB] px-8 py-5 border-t border-gray-100 flex items-center justify-center gap-2">
-                    <i class="fas fa-info-circle text-gray-400"></i>
-                    <p class="text-xs text-gray-500 font-medium">
-                        Dokumen dicetak otomatis dalam format <span class="font-bold text-[#14213D]">A4 Landscape</span>.
-                    </p>
-                </div>
-
-            </div>
+            </form>
         </div>
+
+        {{-- 3. EMPTY STATE / ILUSTRASI (Pemanis area kosong di bawah) --}}
+        <div class="flex-1 flex flex-col items-center justify-center opacity-40 pointer-events-none select-none mt-4">
+            {{-- Menggunakan icon font awesome ukuran besar sebagai ganti gambar SVG --}}
+            <div class="bg-gray-100 p-8 rounded-full mb-4">
+                <i class="fas fa-print text-6xl text-gray-400"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-400">Siap Mencetak Laporan</h3>
+            <p class="text-sm text-gray-400 mt-1">Dokumen dicetak otomatis dalam format A4 Landscape</p>
+        </div>
+
     </div>
 </x-app-layout>

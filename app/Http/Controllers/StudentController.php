@@ -199,36 +199,80 @@ class StudentController extends Controller
     }
 
     public function downloadReport(Request $request, Student $student)
-    {
-        $request->validate([
-            'bulan' => 'required|numeric|min:1|max:12',
-            'tahun' => 'required|numeric|min:2020|max:'.(date('Y')+1),
-        ]);
+{
+    $request->validate([
+        'bulan' => 'required|numeric|min:1|max:12',
+        'tahun' => 'required|numeric|min:2020|max:'.(date('Y')+1),
+    ]);
 
-        $bulan = $request->bulan;
-        $tahun = $request->tahun;
+    $bulan = $request->bulan;
+    $tahun = $request->tahun;
 
-        $attendances = Attendance::where('student_id', $student->id)
-                        ->whereYear('created_at', $tahun)
-                        ->whereMonth('created_at', $bulan)
-                        ->orderBy('created_at', 'asc')
-                        ->get();
+    // 1. Ambil data absensi
+    $attendances = Attendance::where('student_id', $student->id)
+                    ->whereYear('created_at', $tahun)
+                    ->whereMonth('created_at', $bulan)
+                    ->orderBy('created_at', 'asc')
+                    ->get();
 
-        $summary = [
-            'hadir'     => $attendances->where('status_masuk', 'Hadir')->count(),
-            'terlambat' => $attendances->where('status_masuk', 'Terlambat')->count(),
-            'sakit'     => $attendances->where('status_masuk', 'Sakit')->count(), 
-            'izin'      => $attendances->where('status_masuk', 'Izin')->count(),
-            'alpha'     => $attendances->where('status_masuk', 'Alpha')->count(),
-        ];
+    // 2. LOGIKA BARU: Manipulasi data untuk hitung keterlambatan
+    // Kita gunakan transform untuk menambahkan data 'keterangan_telat' ke setiap baris
+    $attendances->transform(function($row) {
+        // Default kosong
+        $row->keterangan_telat = '-';
 
-        $namaBulan = Carbon::create()->month((int)$bulan)->translatedFormat('F');
+        // Cek jika status Terlambat dan ada jam masuknya
+        if ($row->status_masuk == 'Terlambat' && $row->jam_masuk) {
+            
+            // Set Patokan Jam 07:15:00
+            $jamMasukSekolah = Carbon::createFromTime(7, 15, 0); 
+            $jamAbsen = Carbon::parse($row->jam_masuk);
 
-        $pdf = Pdf::loadView('students.report_pdf', compact('student', 'attendances', 'summary', 'namaBulan', 'tahun'));
-        $pdf->setPaper('a4', 'portrait');
+            // Pastikan jam absen memang lebih dari jam masuk sekolah
+            if ($jamAbsen->gt($jamMasukSekolah)) {
+                
+                // floatDiffInMinutes = Hitung selisih menit dalam desimal (misal 1.2 menit)
+                // ceil = Bulatkan ke ATAS (1.2 jadi 2 menit, 0.1 jadi 1 menit)
+                $totalMenit = ceil($jamMasukSekolah->floatDiffInMinutes($jamAbsen));
 
-        return $pdf->stream('Laporan_Absensi_' . $student->nama . '_' . $namaBulan . '.pdf');
-    }
+                // Konversi ke Jam dan Menit
+                $jam = floor($totalMenit / 60);      // Ambil jam utuh
+                $menit = $totalMenit % 60;           // Ambil sisa menit
+
+                // Susun kata-kata
+                $format = [];
+                if ($jam > 0) {
+                    $format[] = $jam . ' Jam';
+                }
+                if ($menit > 0) {
+                    $format[] = $menit . ' Menit';
+                }
+
+                // Masukkan hasil ke variabel baru di object row ini
+                $row->keterangan_telat = implode(' ', $format);
+            }
+        }
+        
+        return $row;
+    });
+
+    // 3. Hitung Summary (Tetap sama)
+    $summary = [
+        'hadir'     => $attendances->where('status_masuk', 'Hadir')->count(),
+        'terlambat' => $attendances->where('status_masuk', 'Terlambat')->count(),
+        'sakit'     => $attendances->where('status_masuk', 'Sakit')->count(), 
+        'izin'      => $attendances->where('status_masuk', 'Izin')->count(),
+        'alpha'     => $attendances->where('status_masuk', 'Alpha')->count(),
+    ];
+
+    $namaBulan = Carbon::create()->month((int)$bulan)->translatedFormat('F');
+
+    // Load View PDF
+    $pdf = Pdf::loadView('students.report_pdf', compact('student', 'attendances', 'summary', 'namaBulan', 'tahun'));
+    $pdf->setPaper('a4', 'portrait');
+
+    return $pdf->stream('Laporan_Absensi_' . $student->nama . '_' . $namaBulan . '.pdf');
+}
 
 
     // =========================================================================
