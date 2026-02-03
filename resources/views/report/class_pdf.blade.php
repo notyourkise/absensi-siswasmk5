@@ -3,54 +3,86 @@
 <head>
     <title>Rekap Absensi - {{ $kelas }}</title>
     <style>
-        /* 1. RESET & FONT */
-        body { font-family: 'Times New Roman', Times, serif; font-size: 11px; margin: 0; padding: 0; }
+        /* --- 1. SETTING HALAMAN (KUNCI AGAR TIDAK TERPOTONG) --- */
+        @page { 
+            margin: 10px 20px; /* Atas-Bawah 10px, Kiri-Kanan 20px */
+            size: landscape;   /* Paksa Landscape lewat CSS */
+        }
+
+        /* --- 2. RESET & FONT --- */
+        body { 
+            font-family: 'Times New Roman', Times, serif; 
+            font-size: 10px; /* DIPERKECIL (Awalnya 11px) */
+            margin: 0; 
+            padding: 0; 
+        }
         
-        /* 2. KOP SURAT (Layout Tabel) */
-        .kop-surat { width: 100%; border-bottom: 4px double #000; padding-bottom: 10px; margin-bottom: 15px; }
-        .kop-logo { width: 75px; height: auto; }
+        /* --- 3. KOP SURAT --- */
+        .kop-surat { width: 100%; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 10px; }
+        .kop-logo { width: 65px; height: auto; } /* Logo diperkecil sedikit */
         .kop-tengah { text-align: center; line-height: 1.1; }
-        .kop-prov { font-size: 12pt; }
-        .kop-dinas { font-size: 12pt; font-weight: bold; }
-        .kop-nama { font-size: 14pt; font-weight: bold; margin: 2px 0; }
-        .kop-alamat { font-size: 9pt; font-style: italic; }
+        .kop-prov { font-size: 11pt; }
+        .kop-dinas { font-size: 11pt; font-weight: bold; }
+        .kop-nama { font-size: 13pt; font-weight: bold; margin: 2px 0; }
+        .kop-alamat { font-size: 8pt; font-style: italic; }
 
-        /* 3. TABEL DATA */
-        table.data { width: 100%; border-collapse: collapse; border: 1px solid #000; }
-        table.data th, table.data td { border: 1px solid #000; padding: 2px; text-align: center; vertical-align: middle; }
-        table.data th { background-color: #E5E7EB; font-weight: bold; font-size: 10px; }
+        /* --- 4. TABEL DATA (INI YANG KRUSIAL) --- */
+        table.data { 
+            width: 100%; 
+            border-collapse: collapse; 
+            border: 1px solid #000; 
+            font-size: 9px; /* DIPERKECIL (Agar muat banyak kolom) */
+        }
         
-        /* Kolom Khusus */
-        .col-no { width: 20px; }
-        .col-nama { text-align: left; padding-left: 5px; width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .col-tgl { width: 18px; font-size: 9px; }
+        table.data th, table.data td { 
+            border: 1px solid #000; 
+            padding: 1px; /* DIRAAPATKAN (Awalnya 2px) */
+            text-align: center; 
+            vertical-align: middle; 
+            line-height: 1.1; /* Jarak antar baris teks dirapatkan */
+        }
 
-        /* 4. WARNA STATUS (Color Coding) */
-        /* Menggunakan !important agar warna background mencetak */
-        .bg-hijau { background-color: #86efac !important; color: #000; } /* H (Green-300) */
-        .bg-kuning { background-color: #fde047 !important; color: #000; } /* S/I (Yellow-300) */
-        .bg-merah { background-color: #fca5a5 !important; color: #000; }  /* A (Red-300) */
-        .bg-abu { background-color: #f3f4f6 !important; } /* Hari Libur/Kosong */
+        table.data th { background-color: #E5E7EB; font-weight: bold; }
+        
+        /* Pengaturan Lebar Kolom */
+        .col-no { width: 18px; }
+        
+        .col-nama { 
+            text-align: left; 
+            padding-left: 4px; 
+            width: 130px; /* DIPERKECIL (Awalnya 150px) */
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+        }
 
-        /* 5. LEGEND & TTD */
-        .footer-info { margin-top: 15px; width: 100%; }
-        .legend-box { width: 12px; height: 12px; display: inline-block; border: 1px solid #000; vertical-align: middle; }
-        .ttd-table { width: 100%; margin-top: 20px; border: none; }
+        /* Kolom Tanggal: Hemat Pixel disini sangat berpengaruh! */
+        .col-tgl { 
+            width: 14px; /* DIPERKECIL (Awalnya 18px) */
+            font-size: 8px; /* Angka tanggal diperkecil */
+        }
+
+        /* --- 5. WARNA STATUS --- */
+        .bg-hijau { background-color: #86efac !important; color: #000; }
+        .bg-kuning { background-color: #fde047 !important; color: #000; }
+        .bg-merah { background-color: #fca5a5 !important; color: #000; }
+        .bg-abu { background-color: #f3f4f6 !important; }
+
+        /* --- 6. FOOTER --- */
+        .footer-info { margin-top: 10px; width: 100%; font-size: 9pt; }
+        .legend-box { width: 10px; height: 10px; display: inline-block; border: 1px solid #000; vertical-align: middle; }
+        .ttd-table { width: 100%; margin-top: 10px; border: none; }
         .ttd-table td { border: none; text-align: center; }
     </style>
 </head>
 <body>
 
-    {{-- 1. KOP SURAT RESMI --}}
+    {{-- 1. KOP SURAT --}}
     <table class="kop-surat">
         <tr>
-            {{-- Logo Kiri (Kaltim) --}}
             <td width="15%" align="center">
-                {{-- Pastikan file ada di public/logo/kaltim.webp --}}
                 <img src="{{ public_path('logo/kaltim.webp') }}" class="kop-logo" alt="Logo">
             </td>
-            
-            {{-- Teks Tengah --}}
             <td width="70%" class="kop-tengah">
                 <span class="kop-prov">PEMERINTAH PROVINSI KALIMANTAN TIMUR</span><br>
                 <span class="kop-dinas">DINAS PENDIDIKAN DAN KEBUDAYAAN</span><br>
@@ -61,8 +93,6 @@
                     Laman: http://smkn5smd.sch.id/
                 </span>
             </td>
-
-            {{-- Logo Kanan (Sekolah) --}}
             <td width="15%" align="center">
                 <img src="{{ public_path('logo/sekolah.png') }}" class="kop-logo" alt="Logo">
             </td>
@@ -70,9 +100,9 @@
     </table>
 
     {{-- 2. JUDUL LAPORAN --}}
-    <div style="text-align: center; margin-bottom: 15px;">
-        <h3 style="margin: 0; text-transform: uppercase;">REKAPITULASI KEHADIRAN SISWA</h3>
-        <p style="margin: 3px 0; font-size: 10pt;">
+    <div style="text-align: center; margin-bottom: 10px;">
+        <h3 style="margin: 0; font-size: 12pt; text-transform: uppercase;">REKAPITULASI KEHADIRAN SISWA</h3>
+        <p style="margin: 2px 0; font-size: 9pt;">
             Kelas: <strong>{{ $kelas }}</strong> | Periode: <strong>{{ $namaBulan }} {{ $tahun }}</strong>
         </p>
     </div>
@@ -83,66 +113,54 @@
             <tr>
                 <th rowspan="2" class="col-no">No</th>
                 <th rowspan="2" class="col-nama" style="text-align: center;">Nama Siswa</th>
-                {{-- Loop Header Tanggal --}}
+                {{-- Header Tanggal --}}
                 <th colspan="{{ $daysInMonth }}">Tanggal</th>
-                {{-- Loop Header Total --}}
+                {{-- Header Total --}}
                 <th colspan="4">Total</th>
             </tr>
             <tr>
                 @for($d = 1; $d <= $daysInMonth; $d++)
                     <th class="col-tgl">{{ $d }}</th>
                 @endfor
-                <th width="20" class="bg-hijau">H</th>
-                <th width="20" class="bg-kuning">S</th>
-                <th width="20" class="bg-kuning">I</th>
-                <th width="20" class="bg-merah">A</th>
+                <th width="18" class="bg-hijau">H</th>
+                <th width="18" class="bg-kuning">S</th>
+                <th width="18" class="bg-kuning">I</th>
+                <th width="18" class="bg-merah">A</th>
             </tr>
         </thead>
         <tbody>
             @foreach($students as $index => $s)
                 @php
-                    // Reset Counter
                     $h = 0; $s_count = 0; $i = 0; $a = 0;
                 @endphp
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td class="col-nama">{{ strtoupper($s->nama) }}</td>
 
-                    {{-- LOOPING TANGGAL (ISI) --}}
+                    {{-- LOOP TANGGAL --}}
                     @for($d = 1; $d <= $daysInMonth; $d++)
                         @php
                             $status = $attendanceData[$s->id][$d] ?? '-';
                             $bgClass = '';
                             $kode = '';
 
-                            // Logika Pewarnaan & Kode
-                            if ($status == 'Hadir') { 
+                            if ($status == 'Hadir' || $status == 'Terlambat') { 
                                 $bgClass = 'bg-hijau'; 
-                                $kode = '•'; 
-                                $h++; 
-                            } elseif ($status == 'Terlambat') { 
-                                $bgClass = 'bg-hijau'; // Terlambat tetap dihitung Hadir (Hijau)
-                                $kode = 'T'; 
+                                $kode = ($status == 'Terlambat') ? 'T' : '•';
                                 $h++; 
                             } elseif ($status == 'Sakit') { 
-                                $bgClass = 'bg-kuning'; 
-                                $kode = 'S'; 
-                                $s_count++; 
+                                $bgClass = 'bg-kuning'; $kode = 'S'; $s_count++; 
                             } elseif ($status == 'Izin') { 
-                                $bgClass = 'bg-kuning'; 
-                                $kode = 'I'; 
-                                $i++; 
+                                $bgClass = 'bg-kuning'; $kode = 'I'; $i++; 
                             } elseif ($status == 'Alpha') { 
-                                $bgClass = 'bg-merah'; 
-                                $kode = 'A'; 
-                                $a++; 
+                                $bgClass = 'bg-merah'; $kode = 'A'; $a++; 
                             }
                         @endphp
 
                         <td class="{{ $bgClass }}">{{ $kode }}</td>
                     @endfor
 
-                    {{-- TOTAL COUNT --}}
+                    {{-- TOTAL --}}
                     <td class="bg-hijau">{{ $h }}</td>
                     <td class="bg-kuning">{{ $s_count }}</td>
                     <td class="bg-kuning">{{ $i }}</td>
@@ -152,37 +170,28 @@
         </tbody>
     </table>
 
-    {{-- 4. FOOTER (KETERANGAN & TTD) --}}
+    {{-- 4. FOOTER --}}
     <div class="footer-info">
         <table style="width: 100%; border: none;">
             <tr>
-                {{-- Kiri: Legend Warna --}}
-                <td style="width: 60%; vertical-align: top; border: none; text-align: left;">
+                {{-- Legend --}}
+                <td style="width: 60%; vertical-align: top; text-align: left;">
                     <strong>Keterangan:</strong><br>
-                    <div style="margin-top: 5px; font-size: 10px;">
-                        <span class="legend-box bg-hijau"></span> Hadir / Terlambat &nbsp;&nbsp;
-                        <span class="legend-box bg-kuning"></span> Sakit / Izin &nbsp;&nbsp;
+                    <div style="margin-top: 3px; font-size: 9px;">
+                        <span class="legend-box bg-hijau"></span> Hadir/Terlambat &nbsp;
+                        <span class="legend-box bg-kuning"></span> Sakit/Izin &nbsp;
                         <span class="legend-box bg-merah"></span> Alpha
                     </div>
                 </td>
                 
-                {{-- Kanan: Tanda Tangan --}}
-                <td style="width: 40%; border: none;">
+                {{-- TTD --}}
+                <td style="width: 40%;">
                     <table class="ttd-table">
-                        <tr>
-                            <td>Samarinda, {{ date('d F Y') }}</td>
-                        </tr>
-                        <tr>
-                            <td>Wali Kelas,</td>
-                        </tr>
-                        <tr>
-                            <td style="height: 60px;"></td> </tr>
-                        <tr>
-                            <td><strong>( .................................... )</strong></td>
-                        </tr>
-                        <tr>
-                            <td style="font-size: 9pt;">NIP. ...........................</td>
-                        </tr>
+                        <tr><td>Samarinda, {{ date('d F Y') }}</td></tr>
+                        <tr><td>Wali Kelas,</td></tr>
+                        <tr><td style="height: 50px;"></td></tr> {{-- Spasi TTD dikurangi dikit --}}
+                        <tr><td><strong>( .................................... )</strong></td></tr>
+                        <tr><td style="font-size: 8pt;">NIP. ...........................</td></tr>
                     </table>
                 </td>
             </tr>
