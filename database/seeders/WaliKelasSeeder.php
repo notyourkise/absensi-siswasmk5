@@ -29,6 +29,13 @@ class WaliKelasSeeder extends Seeder
         $tingkatList = [10, 11, 12];
         $rombelList = [1, 2];
 
+        // Mapping angka ke romawi
+        $romawiMap = [
+            10 => 'X',
+            11 => 'XI',
+            12 => 'XII'
+        ];
+
         $counter = 0;
 
         // Loop Triple Nested untuk Generate 30 Akun
@@ -37,13 +44,13 @@ class WaliKelasSeeder extends Seeder
                 foreach ($rombelList as $rombel) {
                     $counter++;
 
-                    // Format: "12 TJKT 1"
-                    $kelas = "{$tingkat} {$jurusan} {$rombel}";
+                    // Format: "XII TJKT 1" (PAKAI ROMAWI untuk match dengan data siswa)
+                    $kelas = "{$romawiMap[$tingkat]} {$jurusan} {$rombel}";
 
-                    // Format Email: wali12tjkt1@sekolah.com (huruf kecil)
+                    // Format Email: wali12tjkt1@sekolah.com (huruf kecil, TETAP PAKAI ANGKA)
                     $email = 'wali' . $tingkat . strtolower($jurusan) . $rombel . '@sekolah.com';
 
-                    // Nama: Wali Kelas 12 TJKT 1
+                    // Nama: Wali Kelas XII TJKT 1
                     $name = "Wali Kelas {$kelas}";
 
                     User::create([
