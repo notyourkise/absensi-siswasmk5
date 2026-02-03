@@ -90,7 +90,7 @@
                 <span class="kop-alamat">
                     Jalan KH. Wahid Hasyim Nomor 75 RT. 08 Kel. Sempaja Selatan<br>
                     Samarinda, Kalimantan Timur 75119<br>
-                    Laman: http://smkn5smd.sch.id/
+                    Laman: https://smkn5smd.sch.id/
                 </span>
             </td>
             <td width="15%" align="center">
