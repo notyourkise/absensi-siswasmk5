@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\StudentTemplateExport; // Pastikan ini ada
 use App\Imports\StudentsImport;        // Pastikan ini ada
 use Maatwebsite\Excel\Facades\Excel;   // Pastikan ini ada
+use App\Models\ActivityLog;
 use App\Models\Student;
 use App\Models\Attendance;
 use Illuminate\Http\Request;
@@ -23,6 +24,11 @@ class StudentController extends Controller
 {
     $query = Student::query();
 
+    // ===== DATA ISOLATION: Wali Kelas hanya melihat siswa di kelasnya =====
+    if (auth()->user()->role === 'wali_kelas') {
+        $query->where('kelas', auth()->user()->kelas);
+    }
+
     // 1. Fitur Cari Nama / NISN
     if ($request->filled('search')) {
         $query->where(function($q) use ($request) {
@@ -31,13 +37,18 @@ class StudentController extends Controller
         });
     }
 
-    // 2. Fitur Filter per Kelas (Baru)
-    if ($request->filled('kelas')) {
+    // 2. Fitur Filter per Kelas (Hanya untuk Admin & Petugas)
+    if ($request->filled('kelas') && auth()->user()->role !== 'wali_kelas') {
         $query->where('kelas', $request->kelas);
     }
 
     // 3. Ambil daftar kelas unik untuk pilihan di dropdown
-    $classes = Student::select('kelas')->distinct()->orderBy('kelas', 'asc')->pluck('kelas');
+    // Wali Kelas hanya melihat kelasnya sendiri
+    if (auth()->user()->role === 'wali_kelas') {
+        $classes = collect([auth()->user()->kelas]);
+    } else {
+        $classes = Student::select('kelas')->distinct()->orderBy('kelas', 'asc')->pluck('kelas');
+    }
 
     // Tampilkan data dengan pagination
     $students = $query->latest()->paginate(10)->withQueryString();
@@ -102,6 +113,21 @@ class StudentController extends Controller
             'foto.max' => 'Ukuran foto maksimal 1MB',
         ]);
 
+        // Tracking perubahan
+        $changes = [];
+        
+        if ($student->nisn != $request->nisn) {
+            $changes[] = "NISN dari '{$student->nisn}' menjadi '{$request->nisn}'";
+        }
+        
+        if ($student->nama != $request->nama) {
+            $changes[] = "nama dari '{$student->nama}' menjadi '{$request->nama}'";
+        }
+        
+        if ($student->kelas != $request->kelas) {
+            $changes[] = "kelas dari '{$student->kelas}' menjadi '{$request->kelas}'";
+        }
+
         $data = [
             'nisn'  => $request->nisn,
             'nama'  => $request->nama,
@@ -119,9 +145,20 @@ class StudentController extends Controller
             $fotoName = time() . '_' . $file->getClientOriginalName();
             $file->storeAs('students', $fotoName, 'public');
             $data['foto'] = $fotoName;
+            $changes[] = "foto diperbarui";
         }
 
         $student->update($data);
+
+        // Log aktivitas jika ada perubahan
+        if (!empty($changes)) {
+            ActivityLog::create([
+                'user_id' => auth()->id(),
+                'action' => 'UPDATE SISWA',
+                'description' => "Memperbarui data siswa: {$student->nama} - Perubahan: " . implode(', ', $changes),
+                'ip_address' => request()->ip(),
+            ]);
+        }
 
         return redirect()->route('students.index')->with('success', 'Data siswa berhasil diperbarui!');
     }
@@ -129,10 +166,25 @@ class StudentController extends Controller
     // 6. HAPUS SISWA
     public function destroy(Student $student)
     {
+        // Simpan data siswa sebelum dihapus untuk logging
+        $studentName = $student->nama;
+        $studentNisn = $student->nisn;
+        $studentClass = $student->kelas;
+
         if ($student->foto) {
             Storage::delete('public/students/' . $student->foto);
         }
+        
         $student->delete();
+
+        // Log aktivitas penghapusan siswa
+        ActivityLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'HAPUS SISWA',
+            'description' => "Menghapus data siswa: {$studentName} (NISN: {$studentNisn}) Kelas {$studentClass}",
+            'ip_address' => request()->ip(),
+        ]);
+
         return redirect()->route('students.index')->with('success', 'Data siswa dihapus.');
     }
 
@@ -381,5 +433,102 @@ class StudentController extends Controller
         ]);
 
         return $pdf->stream('Kartu_Pelajar_Kelas_' . $kelas . '.pdf');
+    }
+
+    // =========================================================================
+    // BAGIAN 5: FITUR SOFT DELETE (TRASH, RESTORE, FORCE DELETE)
+    // =========================================================================
+
+    /**
+     * Menampilkan daftar siswa yang telah dihapus (Trash)
+     */
+    public function trashed(Request $request)
+    {
+        $query = Student::onlyTrashed();
+
+        // ===== DATA ISOLATION: Wali Kelas hanya melihat siswa di kelasnya =====
+        if (auth()->user()->role === 'wali_kelas') {
+            $query->where('kelas', auth()->user()->kelas);
+        }
+
+        // Fitur Cari Nama / NISN
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('nama', 'like', '%' . $request->search . '%')
+                  ->orWhere('nisn', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        // Fitur Filter per Kelas (Hanya untuk Admin & Petugas)
+        if ($request->filled('kelas') && auth()->user()->role !== 'wali_kelas') {
+            $query->where('kelas', $request->kelas);
+        }
+
+        // Ambil daftar kelas unik untuk dropdown (dari data yang dihapus)
+        if (auth()->user()->role === 'wali_kelas') {
+            $classes = collect([auth()->user()->kelas]);
+        } else {
+            $classes = Student::onlyTrashed()->select('kelas')->distinct()->orderBy('kelas', 'asc')->pluck('kelas');
+        }
+
+        // Tampilkan data dengan pagination
+        $students = $query->latest('deleted_at')->paginate(10)->withQueryString();
+        
+        return view('students.trashed', compact('students', 'classes'));
+    }
+
+    /**
+     * Restore siswa yang telah dihapus
+     */
+    public function restore($id)
+    {
+        $student = Student::onlyTrashed()->findOrFail($id);
+        
+        // Simpan data untuk logging
+        $studentName = $student->nama;
+        $studentNisn = $student->nisn;
+        
+        $student->restore();
+
+        // Log aktivitas restore
+        ActivityLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'RESTORE SISWA',
+            'description' => "Memulihkan data siswa yang dihapus: {$studentName} (NISN: {$studentNisn})",
+            'ip_address' => request()->ip(),
+        ]);
+
+        return redirect()->route('students.trashed')->with('success', 'Data siswa berhasil dipulihkan!');
+    }
+
+    /**
+     * Hapus permanen siswa (Force Delete)
+     */
+    public function forceDelete($id)
+    {
+        $student = Student::onlyTrashed()->findOrFail($id);
+        
+        // Simpan data untuk logging
+        $studentName = $student->nama;
+        $studentNisn = $student->nisn;
+        $studentClass = $student->kelas;
+
+        // Hapus foto jika ada
+        if ($student->foto) {
+            Storage::delete('public/students/' . $student->foto);
+        }
+        
+        // Hapus permanen
+        $student->forceDelete();
+
+        // Log aktivitas force delete
+        ActivityLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'FORCE DELETE SISWA',
+            'description' => "Menghapus PERMANEN data siswa: {$studentName} (NISN: {$studentNisn}) Kelas {$studentClass} [DATA TIDAK BISA DIPULIHKAN]",
+            'ip_address' => request()->ip(),
+        ]);
+
+        return redirect()->route('students.trashed')->with('success', 'Data siswa berhasil dihapus permanen!');
     }
 }

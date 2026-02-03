@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ManualAbsenController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
@@ -67,12 +68,20 @@ Route::middleware('auth')->group(function () {
         // Letakkan di paling atas group Admin agar rapi
         Route::resource('users', \App\Http\Controllers\UserController::class);
 
+        // 2. LOG AKTIVITAS (AUDIT TRAIL) - KHUSUS ADMIN
+        Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+
         // [BARU] Route Backup Database
         Route::get('/backup/download', [App\Http\Controllers\BackupController::class, 'download'])->name('backup.download');
 
         // [PENTING] Route Template & Import harus DI ATAS Resource
         Route::get('/students/template', [StudentController::class, 'downloadTemplate'])->name('students.template');
         Route::post('/students/import', [StudentController::class, 'import'])->name('students.import');
+
+        // [BARU] Route Soft Delete (Trashed, Restore, Force Delete)
+        Route::get('/students/trashed', [StudentController::class, 'trashed'])->name('students.trashed');
+        Route::post('/students/{id}/restore', [StudentController::class, 'restore'])->name('students.restore');
+        Route::delete('/students/{id}/force-delete', [StudentController::class, 'forceDelete'])->name('students.forceDelete');
 
         // Cetak Kartu Massal
         Route::get('/students/print-all', [StudentController::class, 'printAllCards'])->name('students.print.all');

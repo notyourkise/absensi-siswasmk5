@@ -47,7 +47,7 @@
                                 
                                 {{-- Tombol Hapus (Kecuali Hapus Diri Sendiri) --}}
                                 @if($user->id != auth()->user()->id)
-                                <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus user ini?');">
+                                <form action="{{ route('users.destroy', $user->id) }}" method="POST" class="delete-form">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-md"><i class="fas fa-trash"></i></button>
                                 </form>

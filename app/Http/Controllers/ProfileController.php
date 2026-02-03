@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\ActivityLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,13 +28,35 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
+        // Tracking perubahan
+        $changes = [];
+        $oldName = $request->user()->name;
+        $oldEmail = $request->user()->email;
+
         $request->user()->fill($request->validated());
 
+        // Deteksi perubahan nama
+        if ($request->user()->isDirty('name')) {
+            $changes[] = "nama dari '{$oldName}' menjadi '{$request->user()->name}'";
+        }
+
+        // Deteksi perubahan email
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;
+            $changes[] = "email dari '{$oldEmail}' menjadi '{$request->user()->email}'";
         }
 
         $request->user()->save();
+
+        // Log aktivitas jika ada perubahan
+        if (!empty($changes)) {
+            ActivityLog::create([
+                'user_id' => auth()->id(),
+                'action' => 'UPDATE PROFIL',
+                'description' => "Memperbarui profil sendiri - Perubahan: " . implode(', ', $changes),
+                'ip_address' => request()->ip(),
+            ]);
+        }
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
@@ -55,7 +78,15 @@ class ProfileController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        // 3. Kembali dengan pesan sukses
+        // 3. Log aktivitas ganti password
+        ActivityLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'GANTI PASSWORD',
+            'description' => "Mengganti password akun sendiri: {$request->user()->name} ({$request->user()->email})",
+            'ip_address' => request()->ip(),
+        ]);
+
+        // 4. Kembali dengan pesan sukses
         return back()->with('status', 'password-updated');
     }
 

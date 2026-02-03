@@ -12,8 +12,13 @@ class ReportController extends Controller
 {
     public function index()
     {
-        // Ambil daftar kelas
-        $classes = Student::select('kelas')->distinct()->orderBy('kelas', 'asc')->pluck('kelas');
+        // ===== DATA ISOLATION: Wali Kelas hanya melihat kelasnya =====
+        if (auth()->user()->role === 'wali_kelas') {
+            $classes = collect([auth()->user()->kelas]);
+        } else {
+            // Ambil daftar kelas
+            $classes = Student::select('kelas')->distinct()->orderBy('kelas', 'asc')->pluck('kelas');
+        }
         
         // PERBAIKAN DI SINI: Ubah 'reports.index' jadi 'report.index'
         return view('report.index', compact('classes'));
@@ -30,6 +35,13 @@ class ReportController extends Controller
         $kelas = $request->kelas;
         $bulan = (int) $request->bulan;
         $tahun = $request->tahun;
+
+        // ===== DATA ISOLATION: Wali Kelas hanya bisa download kelasnya =====
+        if (auth()->user()->role === 'wali_kelas') {
+            if ($kelas !== auth()->user()->kelas) {
+                return redirect()->back()->with('error', 'Anda hanya bisa mengunduh laporan kelas Anda sendiri!');
+            }
+        }
 
         // Ambil Siswa
         $students = Student::where('kelas', $kelas)->orderBy('nama', 'asc')->get();
@@ -76,13 +88,21 @@ class ReportController extends Controller
         $date = $request->date ?? Carbon::today()->toDateString();
         
         // 2. Ambil daftar semua kelas yang ada di database untuk pilihan dropdown
-        $classes = Student::select('kelas')->distinct()->orderBy('kelas', 'asc')->pluck('kelas');
+        // ===== DATA ISOLATION: Wali Kelas hanya melihat kelasnya =====
+        if (auth()->user()->role === 'wali_kelas') {
+            $classes = collect([auth()->user()->kelas]);
+        } else {
+            $classes = Student::select('kelas')->distinct()->orderBy('kelas', 'asc')->pluck('kelas');
+        }
 
         // 3. Bangun Query Siswa
         $studentsQuery = Student::orderBy('kelas', 'asc')->orderBy('nama', 'asc');
         
-        // Tambahkan filter jika kelas dipilih
-        if ($request->filled('kelas')) {
+        // ===== DATA ISOLATION: Wali Kelas otomatis terfilter =====
+        if (auth()->user()->role === 'wali_kelas') {
+            $studentsQuery->where('kelas', auth()->user()->kelas);
+        } elseif ($request->filled('kelas')) {
+            // Tambahkan filter jika kelas dipilih (untuk Admin/Petugas)
             $studentsQuery->where('kelas', $request->kelas);
         }
         

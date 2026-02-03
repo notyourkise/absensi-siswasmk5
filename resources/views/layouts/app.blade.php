@@ -17,6 +17,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    {{-- SweetAlert2 CDN --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <style>
@@ -149,6 +152,32 @@
                             Manajemen User
                         </div>
                     </a>
+
+                    {{-- MENU LOG AKTIVITAS (AUDIT TRAIL) --}}
+                    <a href="{{ route('activity-logs.index') }}" 
+                    class="{{ $baseClass }} {{ request()->routeIs('activity-logs.*') ? $activeClass : $inactiveClass }}"
+                    :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
+                        <i class="fas fa-history w-6 text-center text-lg"></i>
+                        
+                        <span x-show="!sidebarCollapsed" class="ml-3 truncate">Log Aktivitas</span>
+
+                        <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
+                            Log Aktivitas
+                        </div>
+                    </a>
+
+                    {{-- MENU SISWA TERHAPUS (TRASH) --}}
+                    <a href="{{ route('students.trashed') }}" 
+                    class="{{ $baseClass }} {{ request()->routeIs('students.trashed') ? $activeClass : $inactiveClass }}"
+                    :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
+                        <i class="fas fa-trash-restore w-6 text-center text-lg"></i>
+                        
+                        <span x-show="!sidebarCollapsed" class="ml-3 truncate">Siswa Terhapus</span>
+
+                        <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
+                            Siswa Terhapus
+                        </div>
+                    </a>
                 @endif
 
                 {{-- 4. MENU LAPORAN (ADMIN & WALI KELAS) --}}
@@ -278,5 +307,102 @@
             </main>
         </div>
     </div>
+
+    {{-- SCRIPT FLASH MESSAGE & KONFIRMASI DELETE --}}
+    <script>
+        // ===== FLASH MESSAGE OTOMATIS =====
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: '{{ session('success') }}',
+                confirmButtonColor: '#10B981',
+                timer: 3000,
+                timerProgressBar: true
+            });
+        @endif
+
+        @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: '{{ session('error') }}',
+                confirmButtonColor: '#EF4444'
+            });
+        @endif
+
+        @if(session('status') === 'profile-updated')
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Profil Anda berhasil diperbarui.',
+                confirmButtonColor: '#10B981',
+                timer: 3000,
+                timerProgressBar: true
+            });
+        @endif
+
+        @if(session('status') === 'password-updated')
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Password Anda berhasil diubah.',
+                confirmButtonColor: '#10B981',
+                timer: 3000,
+                timerProgressBar: true
+            });
+        @endif
+
+        // ===== KONFIRMASI HAPUS =====
+        document.addEventListener('DOMContentLoaded', function () {
+            // Tangkap semua form dengan class 'delete-form'
+            const deleteForms = document.querySelectorAll('.delete-form');
+
+            deleteForms.forEach(form => {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault(); // Hentikan pengiriman form
+
+                    Swal.fire({
+                        title: 'Apakah Anda Yakin?',
+                        text: 'Data yang dihapus tidak bisa dikembalikan (kecuali User)!',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#EF4444',
+                        cancelButtonColor: '#6B7280',
+                        confirmButtonText: 'Ya, Hapus!',
+                        cancelButtonText: 'Batal'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            form.submit(); // Kirim form jika user konfirmasi
+                        }
+                    });
+                });
+            });
+
+            // ===== KONFIRMASI RESTORE =====
+            const restoreForms = document.querySelectorAll('.restore-form');
+
+            restoreForms.forEach(form => {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault(); // Hentikan pengiriman form
+
+                    Swal.fire({
+                        title: 'Pulihkan Data Siswa?',
+                        text: 'Data siswa yang dipilih akan dikembalikan ke daftar siswa aktif.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#10B981',
+                        cancelButtonColor: '#6B7280',
+                        confirmButtonText: 'Ya, Pulihkan!',
+                        cancelButtonText: 'Batal'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            form.submit(); // Kirim form jika user konfirmasi
+                        }
+                    });
+                });
+            });
+        });
+    </script>
 </body>
 </html>

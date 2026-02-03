@@ -11,12 +11,38 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        // ===== DATA ISOLATION: Wali Kelas hanya melihat siswa di kelasnya =====
+        $userRole = auth()->user()->role;
+        $userKelas = auth()->user()->kelas;
+
+        // Query base untuk student count
+        $studentQuery = Student::query();
+        if ($userRole === 'wali_kelas') {
+            $studentQuery->where('kelas', $userKelas);
+        }
+
         // --- BAGIAN 1: STATISTIK HARIAN (KARTU ATAS) ---
-        $totalSiswa = Student::count();
-        $hadirHariIni = Attendance::whereDate('tanggal', Carbon::today())->count();
-        $telatHariIni = Attendance::whereDate('tanggal', Carbon::today())
-                        ->whereTime('jam_masuk', '>', '07:15:00')
-                        ->count();
+        $totalSiswa = $studentQuery->count();
+        
+        // Query untuk attendance (dengan filter kelas jika wali kelas)
+        $attendanceQuery = Attendance::whereDate('tanggal', Carbon::today());
+        if ($userRole === 'wali_kelas') {
+            $attendanceQuery->whereHas('student', function($q) use ($userKelas) {
+                $q->where('kelas', $userKelas);
+            });
+        }
+        $hadirHariIni = $attendanceQuery->count();
+        
+        // Query untuk telat
+        $telatQuery = Attendance::whereDate('tanggal', Carbon::today())
+                        ->whereTime('jam_masuk', '>', '07:15:00');
+        if ($userRole === 'wali_kelas') {
+            $telatQuery->whereHas('student', function($q) use ($userKelas) {
+                $q->where('kelas', $userKelas);
+            });
+        }
+        $telatHariIni = $telatQuery->count();
+        
         $alphaHariIni = $totalSiswa - $hadirHariIni;
 
         // --- BAGIAN 2: GRAFIK TREN 7 HARI (GARIS) ---
@@ -25,7 +51,14 @@ class DashboardController extends Controller
         for ($i = 6; $i >= 0; $i--) {
             $tanggal = Carbon::today()->subDays($i);
             $chartLabels[] = $tanggal->format('d M');
-            $chartData[] = Attendance::whereDate('tanggal', $tanggal)->count();
+            
+            $chartAttendance = Attendance::whereDate('tanggal', $tanggal);
+            if ($userRole === 'wali_kelas') {
+                $chartAttendance->whereHas('student', function($q) use ($userKelas) {
+                    $q->where('kelas', $userKelas);
+                });
+            }
+            $chartData[] = $chartAttendance->count();
         }
 
         // --- BAGIAN 3: STATISTIK BULANAN (FILTER) ---
@@ -35,16 +68,26 @@ class DashboardController extends Controller
         $filterTahun = $request->input('tahun', Carbon::now()->year);
 
         // Hitung Terlambat Bulan Ini
-        $rekapTelat = Attendance::whereYear('tanggal', $filterTahun)
+        $rekapTelatQuery = Attendance::whereYear('tanggal', $filterTahun)
                         ->whereMonth('tanggal', $filterBulan)
-                        ->whereTime('jam_masuk', '>', '07:15:00')
-                        ->count();
+                        ->whereTime('jam_masuk', '>', '07:15:00');
+        if ($userRole === 'wali_kelas') {
+            $rekapTelatQuery->whereHas('student', function($q) use ($userKelas) {
+                $q->where('kelas', $userKelas);
+            });
+        }
+        $rekapTelat = $rekapTelatQuery->count();
 
         // Hitung Tepat Waktu Bulan Ini
-        $rekapTepat = Attendance::whereYear('tanggal', $filterTahun)
+        $rekapTepatQuery = Attendance::whereYear('tanggal', $filterTahun)
                         ->whereMonth('tanggal', $filterBulan)
-                        ->whereTime('jam_masuk', '<=', '07:15:00')
-                        ->count();
+                        ->whereTime('jam_masuk', '<=', '07:15:00');
+        if ($userRole === 'wali_kelas') {
+            $rekapTepatQuery->whereHas('student', function($q) use ($userKelas) {
+                $q->where('kelas', $userKelas);
+            });
+        }
+        $rekapTepat = $rekapTepatQuery->count();
 
         // Kirim data bulan untuk dropdown
         $bulanOptions = [

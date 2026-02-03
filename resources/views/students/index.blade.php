@@ -6,7 +6,13 @@
             <h2 class="font-extrabold text-2xl text-[#14213D] leading-tight flex items-center gap-2">
                 <i class="fas fa-users text-[#FCA311]"></i> {{ __('Data Siswa') }}
             </h2>
-            <p class="text-sm text-gray-500 mt-1">Kelola data peserta didik SMKN 5 Samarinda</p>
+            <p class="text-sm text-gray-500 mt-1">
+                @if(auth()->user()->role === 'wali_kelas')
+                    Kelola siswa kelas binaan: <strong class="text-[#FCA311]">{{ auth()->user()->kelas }}</strong>
+                @else
+                    Kelola data peserta didik SMKN 5 Samarinda
+                @endif
+            </p>
         </div>
         
         {{-- Breadcrumb / Info Kecil --}}
@@ -48,13 +54,18 @@
                                 <i class="fas fa-filter"></i>
                             </div>
                             <select name="kelas" onchange="this.form.submit()" 
-                                    class="w-full pl-10 bg-[#E5E5E5] border-transparent focus:bg-white focus:border-[#FCA311] focus:ring-[#FCA311] rounded-xl text-sm font-medium text-[#14213D] py-2.5 transition-all">
-                                <option value="">Semua Kelas</option>
-                                @foreach($classes as $item)
-                                    <option value="{{ $item }}" {{ request('kelas') == $item ? 'selected' : '' }}>
-                                        {{ $item }}
-                                    </option>
-                                @endforeach
+                                    class="w-full pl-10 bg-[#E5E5E5] border-transparent focus:bg-white focus:border-[#FCA311] focus:ring-[#FCA311] rounded-xl text-sm font-medium text-[#14213D] py-2.5 transition-all"
+                                    @if(auth()->user()->role === 'wali_kelas') disabled @endif>
+                                @if(auth()->user()->role === 'wali_kelas')
+                                    <option value="{{ auth()->user()->kelas }}" selected>{{ auth()->user()->kelas }}</option>
+                                @else
+                                    <option value="">Semua Kelas</option>
+                                    @foreach($classes as $item)
+                                        <option value="{{ $item }}" {{ request('kelas') == $item ? 'selected' : '' }}>
+                                            {{ $item }}
+                                        </option>
+                                    @endforeach
+                                @endif
                             </select>
                         </div>
                     </div>
@@ -207,7 +218,7 @@
 
                                     {{-- Hapus --}}
                                     <form action="{{ route('students.destroy', $student->id) }}" method="POST" 
-                                          onsubmit="return confirm('Apakah Anda yakin ingin menghapus data {{ $student->nama }}?');" class="inline">
+                                          class="inline delete-form">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" 
