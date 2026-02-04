@@ -15,6 +15,7 @@ class Attendance extends Model
         'jam_masuk',
         'jam_keluar',
         'status_masuk',
+        'status_pulang',
     ];
 
     // Relasi: Absensi ini milik satu siswa

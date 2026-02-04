@@ -199,16 +199,16 @@
                          </div>
                      </a>
 
-                    {{-- Laporan Harian --}}
+                    {{-- Laporan Absensi --}}
                     <a href="{{ route('report.daily') }}" 
                        class="{{ $baseClass }} {{ request()->routeIs('report.daily') ? $activeClass : $inactiveClass }}"
                        :class="sidebarCollapsed ? 'justify-center px-2' : 'px-4'">
                         <i class="fas fa-calendar-day w-6 text-center text-lg"></i>
                         
-                        <span x-show="!sidebarCollapsed" class="ml-3 truncate">Laporan Harian</span>
+                        <span x-show="!sidebarCollapsed" class="ml-3 truncate">Laporan Absensi</span>
 
                         <div x-show="sidebarCollapsed" class="absolute left-14 bg-[#14213D] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap pointer-events-none border border-[#FCA311]">
-                            Laporan Harian
+                            Laporan Absensi
                         </div>
                     </a>
 

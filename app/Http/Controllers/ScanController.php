@@ -15,9 +15,17 @@ class ScanController extends Controller
     public function index()
     {
         // Ambil 5 data scan terakhir hari ini
-        $latest_scans = Attendance::with('student')
-                        ->whereDate('tanggal', Carbon::today()) // Sesuai kolom 'tanggal' di tabel Anda
-                        ->latest('updated_at') 
+        $query = Attendance::with('student')
+                        ->whereDate('tanggal', Carbon::today());
+        
+        // ===== DATA ISOLATION: Wali Kelas hanya melihat scan siswa di kelasnya =====
+        if (auth()->user()->role === 'wali_kelas') {
+            $query->whereHas('student', function($q) {
+                $q->where('kelas', auth()->user()->kelas);
+            });
+        }
+        
+        $latest_scans = $query->latest('updated_at') 
                         ->take(5)
                         ->get();
 
@@ -53,12 +61,9 @@ class ScanController extends Controller
         // Batas Terlambat Masuk
         $batasTerlambat = Carbon::today()->setTime(7, 15, 0); 
         
-        // Jam Mulai Boleh Absen Pulang (Scan Barcode)
-        // Sebelum jam ini, scan akan DITOLAK.
-        $jamBukaPulang  = Carbon::today()->setTime(15, 30, 0); 
-        
-        // (Opsional) Batas Akhir Absen Pulang
-        $jamTutupPulang = Carbon::today()->setTime(17, 30, 0); 
+        // ===== RENTANG WAKTU PULANG: TESTING 12:04 - 12:06 =====
+        $jamBukaPulang  = Carbon::today()->setTime(12, 4, 0); 
+        $jamTutupPulang = Carbon::today()->setTime(12, 6, 0); 
 
 
         // ==========================================
@@ -100,25 +105,27 @@ class ScanController extends Controller
                 return redirect()->route('scan.index')->with('error', 'Anda sudah absen pulang hari ini!');
             }
 
-            // B. VALIDASI JAM PULANG (SOLUSI MASALAH NO 2 & 3 ANDA)
-            // Jika jam sekarang BELUM jam 15:30, tolak scan ini.
+            // B. VALIDASI JAM PULANG (RENTANG TESTING: 12:04 - 12:06)
+            // Jika scan sebelum jam testing
             if ($jamSekarang->lessThan($jamBukaPulang)) {
                 return redirect()->route('scan.index')
-                    ->with('error', 'Belum waktunya pulang! (Dibuka 15:30). Jika Sakit/Izin, lapor Admin untuk Input Manual.');
+                    ->with('error', 'Belum waktunya pulang! (Dibuka 12:04 untuk testing). Jika Sakit atau Izin dispensasi, lapor Admin untuk Input Manual.');
             }
 
-            // Jika lewat jam tutup (misal jam 8 malam gaboleh scan lagi)
+            // Jika scan setelah jam 12:06 -> DITOLAK (sudah otomatis Alpha jam 12:07)
             if ($jamSekarang->greaterThan($jamTutupPulang)) {
-                 return redirect()->route('scan.index')->with('error', 'Absen pulang sudah ditutup.');
+                 return redirect()->route('scan.index')
+                     ->with('error', 'Waktu absen pulang sudah lewat! (12:04-12:06). Status Anda akan otomatis Alpha jam 12:07.');
             }
 
-            // C. LOLOS VALIDASI -> UPDATE PULANG
+            // C. LOLOS VALIDASI (15:30 - 16:30) -> TEPAT WAKTU
             $attendance->update([
-                'jam_keluar' => $jamSekarang
+                'jam_keluar' => $jamSekarang,
+                'status_pulang' => 'Tepat Waktu'
             ]);
 
             return redirect()->route('scan.index')
-                ->with('success', 'Hati-hati di jalan! (Absen Pulang)')
+                ->with('success', 'Hati-hati di jalan! (Absen Pulang Tepat Waktu)')
                 ->with('student_data', $student)
                 ->with('status_color', 'blue');
         }

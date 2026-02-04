@@ -714,7 +714,10 @@ php artisan db:seed --class=WaliKelasSeeder
 | `app/Http/Controllers/StudentController.php` | ✏️ UPDATE | Tambah data isolation di method `index()` dan `trashed()` |
 | `app/Http/Controllers/DashboardController.php` | ✏️ UPDATE | Tambah data isolation di seluruh query |
 | `app/Http/Controllers/ReportController.php` | ✏️ UPDATE | Tambah data isolation di `index()`, `downloadClassReport()`, `daily()` |
+| `app/Http/Controllers/ManualAbsenController.php` | ✏️ UPDATE | Tambah data isolation di `create()` dan validasi di `store()` |
+| `app/Http/Controllers/ScanController.php` | ✏️ UPDATE | Tambah data isolation di `index()` untuk latest scans |
 | `resources/views/students/index.blade.php` | ✏️ UPDATE | Tambah indikator kelas di header, disable dropdown filter |
+| `resources/views/manual/create.blade.php` | ✏️ UPDATE | Tambah indikator kelas di header, info jumlah siswa |
 
 ---
 

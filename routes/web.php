@@ -47,7 +47,7 @@ Route::middleware('auth')->group(function () {
     // Petugas DILARANG masuk sini (takut salah hapus/lihat data)
     Route::middleware('role:admin,wali_kelas')->group(function () {
         
-        // 1. Laporan Harian
+        // 1. Laporan Absensi
         Route::get('/laporan-harian', [ReportController::class, 'daily'])->name('report.daily');
 
         // 2. Laporan Rekap Kelas (Jurnal)
@@ -57,6 +57,13 @@ Route::middleware('auth')->group(function () {
         // 3. Input Manual (Sakit/Izin)
         Route::get('/input-manual', [ManualAbsenController::class, 'create'])->name('manual.create');
         Route::post('/input-manual', [ManualAbsenController::class, 'store'])->name('manual.store');
+    });
+
+    // --- D. EDIT ABSENSI (KHUSUS ADMIN) ---
+    Route::middleware('role:admin')->group(function () {
+        Route::put('/attendance/{id}/update', [ReportController::class, 'updateAttendance'])->name('attendance.update');
+        Route::post('/attendance/create', [ReportController::class, 'createAttendance'])->name('attendance.create');
+        Route::post('/report/validasi-pulang', [ReportController::class, 'validasiAbsenPulang'])->name('report.validasi-pulang');
     });
 
 

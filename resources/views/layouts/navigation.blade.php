@@ -16,7 +16,7 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
                     <x-nav-link :href="route('report.daily')" :active="request()->routeIs('report.daily')">
-                        {{ __('Laporan Harian') }}
+                        {{ __('Laporan Absensi') }}
                     </x-nav-link>
                     {{-- PAKAI YANG INI (Lebih Canggih karena pakai bintang *) --}}
                     <x-nav-link :href="route('students.index')" :active="request()->routeIs('students.*')">
